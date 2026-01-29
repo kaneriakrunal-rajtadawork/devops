@@ -61,4 +61,3 @@ async function connectDB() {
 
 export default connectDB;
 export const ObjectId = (id) => new mongoose.Types.ObjectId(id);
-export { connectionStats };

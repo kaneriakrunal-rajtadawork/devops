@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { connectionStats } from '@/lib/mongodb';
 import requestLogger from '@/lib/request-logger';
 
 export async function GET() {
@@ -19,7 +18,6 @@ export async function GET() {
                 inUse: poolStats?.totalConnectionCount - poolStats?.availableConnections,
                 waitQueue: poolStats?.waitQueueSize || 0
             },
-            stats: connectionStats,
             otherStats:stats,
         },
         process: {
