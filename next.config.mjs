@@ -7,7 +7,6 @@ import { loadSecrets } from "./src/constants/globals.constants.js";
 await loadSecrets();
 
 const nextConfig = {
-    distDir:'build',
     // output : 'standalone',
     webpack(config) {
         config.module.rules.push({
