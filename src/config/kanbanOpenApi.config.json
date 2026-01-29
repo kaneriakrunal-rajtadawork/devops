@@ -1,0 +1,2588 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Kanban API",
+        "version": "1.0.0",
+        "description": "API for Kanban project management system"
+    },
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ],
+    "servers": [
+        {
+            "url": "http://localhost:5050",
+            "description": "Development server"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        },
+        "schemas": {
+            "ApiResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "type": "object"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "user",
+                            "admin"
+                        ]
+                    }
+                }
+            },
+            "Project": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "projectCreatorId": {
+                        "type": "string"
+                    },
+                    "technologies": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "WorkItem": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "Feature",
+                            "Bug",
+                            "Enhancement",
+                            "Documentation",
+                            "Task",
+                            "Epic",
+                            "Test Case",
+                            "Issue",
+                            "User Story"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "todo",
+                            "in-progress",
+                            "review",
+                            "doing",
+                            "completed",
+                            "active",
+                            "new",
+                            "resolved"
+                        ]
+                    },
+                    "priority": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4
+                    },
+                    "assignedTo": {
+                        "type": "string"
+                    },
+                    "project": {
+                        "type": "string"
+                    }
+                }
+            },
+            "WorkItemComment": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Comment ID"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "description": "Comment text content"
+                    },
+                    "workItem": {
+                        "type": "string",
+                        "description": "Reference to the work item ID"
+                    },
+                    "createdBy": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "$ref": "#/components/schemas/User"
+                            }
+                        ],
+                        "description": "User who created the comment"
+                    },
+                    "reactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommentReaction"
+                        },
+                        "description": "Reactions on the comment"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the comment was created"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the comment was last updated"
+                    }
+                }
+            },
+            "CommentReaction": {
+                "type": "object",
+                "properties": {
+                    "reaction": {
+                        "type": "string",
+                        "description": "Reaction emoji or type"
+                    },
+                    "reactedUsers": {
+                        "type": "array",
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            ]
+                        },
+                        "description": "Users who reacted with this reaction"
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/api/auth/signin": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Sign in user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "password"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sign in successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/signup": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Sign up new user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get users",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Users retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{id}": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get user by ID",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/projects": {
+            "get": {
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Get projects",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Projects retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Create project",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "technologies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "title"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Project created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects/{id}": {
+            "get": {
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Get project by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Update project",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Project"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Project updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Delete project",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects/title/{projectTitle}": {
+            "get": {
+                "tags": [
+                    "Projects"
+                ],
+                "operationId": "getProjectsByTitle",
+                "summary": "Get project by title",
+                "parameters": [
+                    {
+                        "name": "projectTitle",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Projects"
+                ],
+                "operationId": "updateProjectTitle",
+                "summary": "Update project title",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "projectTitle",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "title"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Project title updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/work-items": {
+            "get": {
+                "tags": [
+                    "Work Items"
+                ],
+                "summary": "Get work items",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "assignedTo",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Work items retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Work Items"
+                ],
+                "operationId": "createWorkItem",
+                "summary": "Create work item",
+                "description": "Creates a new work item with the specified details",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200,
+                                        "description": "Work item title (required)"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Feature",
+                                            "Bug",
+                                            "Enhancement",
+                                            "Documentation",
+                                            "Task",
+                                            "Epic",
+                                            "Test Case",
+                                            "Issue",
+                                            "User Story"
+                                        ],
+                                        "description": "Work item type (required)"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "maxLength": 50000,
+                                        "description": "Work item description"
+                                    },
+                                    "state": {
+                                        "type": "string",
+                                        "enum": [
+                                            "To Do",
+                                            "Doing",
+                                            "Done"
+                                        ],
+                                        "default": "To Do",
+                                        "description": "Work item state"
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Added To Backlog",
+                                            "New",
+                                            "Moved to Backlog",
+                                            "Moved Out of Backlog",
+                                            "Implementation Started",
+                                            "In Progress",
+                                            "Completed",
+                                            "Duplicate",
+                                            "Resolved",
+                                            "Fixed",
+                                            "Cancelled",
+                                            "As Designed"
+                                        ],
+                                        "default": "Added To Backlog",
+                                        "description": "Work item reason"
+                                    },
+                                    "assignedTo": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "User ID to assign the work item to"
+                                    },
+                                    "project": {
+                                        "type": "string",
+                                        "description": "Project ID (required)"
+                                    },
+                                    "repo": {
+                                        "type": "string",
+                                        "description": "Repository ID (required)"
+                                    },
+                                    "area": {
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "description": "Area path (defaults to repo name if not provided)"
+                                    },
+                                    "iteration": {
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "description": "Iteration path (defaults to repo name if not provided)"
+                                    },
+                                    "parentId": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "Parent work item ID for hierarchy"
+                                    },
+                                    "startDate": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "description": "Start date for the work item"
+                                    },
+                                    "targetDate": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "description": "Target completion date"
+                                    },
+                                    "priority": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 4,
+                                        "default": 2,
+                                        "description": "Priority level (1-4, where 1 is highest)"
+                                    },
+                                    "activity": {
+                                        "type": "string",
+                                        "maxLength": 1000,
+                                        "description": "Activity type"
+                                    },
+                                    "remainingWork": {
+                                        "type": "number",
+                                        "description": "Remaining work in hours"
+                                    },
+                                    "effort": {
+                                        "type": "number",
+                                        "description": "Effort estimate"
+                                    },
+                                    "dueDate": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "description": "Due date for the work item"
+                                    },
+                                    "tags": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "maxLength": 50
+                                        },
+                                        "default": [],
+                                        "description": "Tags for categorization"
+                                    },
+                                    "labels": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "maxLength": 50
+                                        },
+                                        "default": [],
+                                        "description": "Labels for categorization"
+                                    },
+                                    "stackRank": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "description": "Stack rank for ordering"
+                                    },
+                                    "severity": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 3,
+                                        "default": 2,
+                                        "description": "Severity level (1-3, where 1 is highest)"
+                                    },
+                                    "isArchived": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "Whether the work item is archived"
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "type",
+                                    "project",
+                                    "repo"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Work item created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "403": {
+                        "description": "Forbidden - Insufficient permissions"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Work Items"
+                ],
+                "operationId": "getWorkItemsList",
+                "summary": "Get work items list with filters",
+                "description": "Retrieves a paginated list of work items with advanced filtering options",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "project": {
+                                        "type": "string",
+                                        "description": "Project ID (required)"
+                                    },
+                                    "repo": {
+                                        "type": "string",
+                                        "description": "Repository ID (required)"
+                                    },
+                                    "assignedTo": {
+                                        "type": "string",
+                                        "description": "Filter by assigned user ID"
+                                    },
+                                    "search": {
+                                        "type": "string",
+                                        "description": "Search term for title, description, tags, labels"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "assignedToMe",
+                                            "following",
+                                            "mentioned",
+                                            "myActivity",
+                                            "recentlyUpdated",
+                                            "recentlyCompleted",
+                                            "recentlyCreated"
+                                        ],
+                                        "description": "Filter type for work items"
+                                    },
+                                    "state": {
+                                        "type": "string",
+                                        "enum": [
+                                            "To Do",
+                                            "Doing",
+                                            "Done"
+                                        ],
+                                        "description": "Work item state"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Task",
+                                            "Epic",
+                                            "Issue"
+                                        ],
+                                        "description": "Work item type"
+                                    },
+                                    "area": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Filter by area paths"
+                                    },
+                                    "tags": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Filter by tags"
+                                    },
+                                    "sortBy": {
+                                        "type": "string",
+                                        "default": "createdAt",
+                                        "description": "Field to sort by"
+                                    },
+                                    "sortOrder": {
+                                        "type": "string",
+                                        "enum": [
+                                            "asc",
+                                            "desc"
+                                        ],
+                                        "default": "desc",
+                                        "description": "Sort direction"
+                                    },
+                                    "pagination": {
+                                        "type": "object",
+                                        "properties": {
+                                            "page": {
+                                                "type": "integer",
+                                                "default": 1,
+                                                "description": "Page number"
+                                            },
+                                            "limit": {
+                                                "type": "integer",
+                                                "default": 20,
+                                                "description": "Items per page"
+                                            }
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "project",
+                                    "repo"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Work items retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "data": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/WorkItem"
+                                                            }
+                                                        },
+                                                        "pagination": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "page": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "limit": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "total": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "totalPages": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "hasNext": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "hasPrev": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have access to project/repo"
+                    }
+                }
+            }
+        },
+        "/api/work-items/board": {
+            "get": {
+                "tags": [
+                    "Work Items"
+                ],
+                "operationId": "getBoardWorkItems",
+                "summary": "Get work items for Kanban board",
+                "description": "Retrieves parent work items with nested children (sub-items) for Kanban board view. Returns minimal fields optimized for board display.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project",
+                        "in": "query",
+                        "required": true,
+                        "description": "Project ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "repo",
+                        "in": "query",
+                        "required": true,
+                        "description": "Repository ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by states",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "To Do",
+                                    "Doing",
+                                    "Done"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": true,
+                        "description": "Filter by work item search",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "area",
+                        "in": "query",
+                        "required": false,
+                         "style": "form",
+                        "explode": true,
+                        "schema":{
+                             "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "description": "Filter by area paths"
+                    },
+                    {
+                        "name": "tagOperator",
+                        "in": "query",
+                        "required": false,
+                         "style": "form",
+                        "explode": true,
+                         "schema": {
+                            "type": "string"
+                        },
+                        "description": "Tag operator"
+                    },
+                     {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                         "style": "form",
+                        "explode": true,
+                       "schema":{
+                             "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "description": "Tags list to be filtered"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "description": "Filter by work item type",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "assignedUsers",
+                        "in": "query",
+                        "required": false,
+                         "style": "form",
+                        "explode": true,
+                        "schema":{
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "description": "Filter by assigned users"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Board work items retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "workItems": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "number": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "title": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "type": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "priority": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "assignedUser": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "name": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "userId": {
+                                                                                "type": "string"
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "children": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "id": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "number": {
+                                                                                    "type": "integer"
+                                                                                },
+                                                                                "title": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "type": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "state": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "parentId": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "assignedUser": {
+                                                                                    "type": "object",
+                                                                                    "properties": {
+                                                                                        "name": {
+                                                                                            "type": "string"
+                                                                                        },
+                                                                                        "userId": {
+                                                                                            "type": "string"
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "childrenCount": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "total": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing required query parameters"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have access to project/repo"
+                    }
+                }
+            }
+        },
+        "/api/work-items/backlogs": {
+            "get": {
+                "tags": [
+                    "Work Items"
+                ],
+                "operationId": "getBacklogWorkItems",
+                "summary": "Get work items for Kanban board",
+                "description": "Retrieves parent work items with nested children (sub-items) for Kanban backlog view. Returns minimal fields optimized for board display.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project",
+                        "in": "query",
+                        "required": true,
+                        "description": "Project ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "repo",
+                        "in": "query",
+                        "required": true,
+                        "description": "Repository ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by state",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "To Do",
+                                "Doing",
+                                "Done"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "description": "Filter by work item type",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": true,
+                        "description": "Filter by work item search",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "area",
+                        "in": "query",
+                        "required": false,
+                         "style": "form",
+                        "explode": true,
+                        "schema":{
+                             "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "description": "Filter by area paths"
+                    },
+                    {
+                        "name": "tagOperator",
+                        "in": "query",
+                        "required": false,
+                         "style": "form",
+                        "explode": true,
+                         "schema": {
+                            "type": "string"
+                        },
+                        "description": "Tag operator"
+                    },
+                     {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                         "style": "form",
+                        "explode": true,
+                       "schema":{
+                             "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "description": "Tags list to be filtered"
+                    },
+                    {
+                        "name": "inProgressItems",
+                        "in": "query",
+                        "required": false,
+                        "description": "Show in progress items also",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "completedChildItems",
+                        "in": "query",
+                        "required": false,
+                        "description": "Show completed child items also",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "keepHierarchyWithFilters",
+                        "in": "query",
+                        "required": false,
+                        "description": "Keep hierarchy with filters",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                    
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Backlog work items retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "workItems": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "number": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "title": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "type": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "priority": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "stackRank": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "assignedUser": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "name": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "userId": {
+                                                                                "type": "string"
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "children": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "id": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "number": {
+                                                                                    "type": "integer"
+                                                                                },
+                                                                                "title": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "type": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "state": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "parentId": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "assignedUser": {
+                                                                                    "type": "object",
+                                                                                    "properties": {
+                                                                                        "name": {
+                                                                                            "type": "string"
+                                                                                        },
+                                                                                        "userId": {
+                                                                                            "type": "string"
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                "stackRank": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "childrenCount": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "total": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing required query parameters"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have access to project/repo"
+                    }
+                }
+            }
+        },
+        "/api/work-items/reorder": {
+            "patch": {
+                "tags": [
+                    "Work Items"
+                ],
+                "operationId": "reorderWorkItem",
+                "summary": "Reorder work item in backlog",
+                "description": "Reorders a work item by updating its stack rank based on surrounding items. Uses LexoRank algorithm to calculate the new position between prevRank and nextRank.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "project": {
+                                        "type": "string",
+                                        "description": "Project ID (required)"
+                                    },
+                                    "repo": {
+                                        "type": "string",
+                                        "description": "Repository ID (required)"
+                                    },
+                                    "workItemId": {
+                                        "type": "string",
+                                        "description": "Work item ID to reorder (required)"
+                                    },
+                                    "prevRank": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "Stack rank of the item above the new position (null if moving to top)"
+                                    },
+                                    "nextRank": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "Stack rank of the item below the new position (null if moving to bottom)"
+                                    }
+                                },
+                                "required": [
+                                    "project",
+                                    "repo",
+                                    "workItemId"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Work item reordered successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "stackRank": {
+                                                            "type": "string",
+                                                            "description": "New stack rank value"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error - Missing required fields"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have admin access to repo"
+                    },
+                    "404": {
+                        "description": "Work item, project, or repo not found"
+                    }
+                }
+            }
+        },
+        "/api/work-items/{id}": {
+            "get": {
+                "tags": [
+                    "Work Items"
+                ],
+                "operationId": "getWorkItemById",
+                "summary": "Get work item by ID",
+                "description": "Retrieves a single work item by its ID with populated project, createdBy, and assignedTo fields",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Work item ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Work item retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/WorkItem"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "404": {
+                        "description": "Work item not found"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "updateWorkItem",
+                "tags": [
+                    "Work Items"
+                ],
+                "summary": "Update work item",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkItem"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Work item updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Work Items"
+                ],
+                "summary": "Delete work item",
+                "operationId": "deleteWorkItem",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Work item deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/work-items/{id}/assign": {
+            "post": {
+                "tags": [
+                    "Work Items"
+                ],
+                "summary": "Assign work item",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "assignedTo": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Work item assigned successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/work-items/search": {
+            "get": {
+                "tags": [
+                    "Work Items"
+                ],
+                "summary": "Search work items",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search results",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/work-items/{id}/comments": {
+            "get": {
+                "tags": [
+                    "Work Item Comments"
+                ],
+                "operationId": "getWorkItemComments",
+                "summary": "Get comments for a work item",
+                "description": "Retrieves all comments for a specific work item with populated createdBy and reactions.reactedUsers",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Work item ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Comments retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/WorkItemComment"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Work item ID is required"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "404": {
+                        "description": "Work item not found"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Work Item Comments"
+                ],
+                "operationId": "createWorkItemComment",
+                "summary": "Create a comment on a work item",
+                "description": "Creates a new comment on the specified work item",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Work item ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "comment": {
+                                        "type": "string",
+                                        "description": "Comment text content"
+                                    }
+                                },
+                                "required": [
+                                    "comment"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Comment created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Work item ID is required or invalid comment data"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Work Item Comments"
+                ],
+                "operationId": "updateWorkItemComment",
+                "summary": "Update a comment",
+                "description": "Updates an existing comment by its ID",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Comment ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "comment": {
+                                        "type": "string",
+                                        "description": "Updated comment text"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Comment updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Comment ID is required"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "403": {
+                        "description": "Forbidden - Only the comment creator can update"
+                    },
+                    "404": {
+                        "description": "Comment not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Work Item Comments"
+                ],
+                "operationId": "deleteWorkItemComment",
+                "summary": "Delete a comment",
+                "description": "Deletes a comment by its ID",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Comment ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Comment deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Comment ID is required"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "403": {
+                        "description": "Forbidden - Only the comment creator can delete"
+                    },
+                    "404": {
+                        "description": "Comment not found"
+                    }
+                }
+            }
+        },
+        "/api/work-items/{id}/comments/reactions": {
+            "post": {
+                "tags": [
+                    "Work Item Comments"
+                ],
+                "operationId": "addCommentReaction",
+                "summary": "Add a reaction to a comment",
+                "description": "Adds a reaction (emoji) to a specific comment",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Comment ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reaction": {
+                                        "type": "string",
+                                        "description": "Reaction emoji or type (e.g., 'like', 'heart', '👍')"
+                                    }
+                                },
+                                "required": [
+                                    "reaction"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reaction added successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Comment ID is required"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "404": {
+                        "description": "Comment not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Work Item Comments"
+                ],
+                "operationId": "removeCommentReaction",
+                "summary": "Remove a reaction from a comment",
+                "description": "Removes a reaction (emoji) from a specific comment",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Comment ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reaction": {
+                                        "type": "string",
+                                        "description": "Reaction emoji or type to remove"
+                                    }
+                                },
+                                "required": [
+                                    "reaction"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reaction removed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Comment ID is required"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "404": {
+                        "description": "Comment not found"
+                    }
+                }
+            }
+        },
+        "/api/repos": {
+            "get": {
+                "tags": [
+                    "Repositories"
+                ],
+                "summary": "Get repositories By ProjectId",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Repositories retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Repositories"
+                ],
+                "summary": "Create repository",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Repository created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/repos/{id}": {
+            "get": {
+                "tags": [
+                    "Repositories"
+                ],
+                "summary": "Get repository details by ID",
+                "operationId": "getGithubRepoDetails",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Repositories retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Repository not found"
+                    }
+                }
+            }
+        },
+        "/api/repos/{id}/branches": {
+            "get": {
+                "tags": [
+                    "Repositories"
+                ],
+                "summary": "Get repository branches by ID",
+                "operationId": "getRepoBranches",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Repository branches retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Repository not found"
+                    }
+                }
+            }
+        },
+        "/api/repos/{id}/files": {
+            "get": {
+                "tags": [
+                    "Repositories"
+                ],
+                "summary": "Get repository files by ID",
+                "operationId": "getRepoFiles",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "branchName",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "path",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Repository files retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Repository files not found"
+                    }
+                }
+            }
+        },
+        "/api/repos/{id}/readme": {
+            "get": {
+                "tags": [
+                    "Repositories"
+                ],
+                "summary": "Get repository readme by ID",
+                "operationId": "getRepoReadme",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "branchName",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Repository readme retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Repository readme not found"
+                    }
+                }
+            }
+        },
+        "/api/github/authorize": {
+            "get": {
+                "tags": [
+                    "GitHub Integration"
+                ],
+                "summary": "Initiate GitHub OAuth2 Authorization",
+                "description": "Redirects user to GitHub for OAuth2 authorization.",
+                "responses": {
+                    "302": {
+                        "description": "Redirect to GitHub authorization URL"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/github/callback": {
+            "get": {
+                "tags": [
+                    "GitHub Integration"
+                ],
+                "summary": "Handle GitHub OAuth2 Callback",
+                "description": "Handles the OAuth2 callback from GitHub and processes the authorization code.",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "query",
+                        "description": "Authorization code received from GitHub",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "description": "State parameter to protect against CSRF attacks",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to Kanban application with success or error message"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        }
+    }
+}
